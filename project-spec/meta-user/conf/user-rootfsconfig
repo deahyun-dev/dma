@@ -1,0 +1,13 @@
+#Note: Mention Each package in individual line
+#These packages will get added into rootfs menu entry
+
+CONFIG_gpio-demo
+CONFIG_peekpoke
+CONFIG_dma-test-0
+CONFIG_dma-example-vitis
+CONFIG_dma-l
+CONFIG_libapp
+CONFIG_libxil
+
+CONFIG_0-dma-test
+CONFIG_axidma
