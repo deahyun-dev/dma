@@ -457,21 +457,20 @@
 
 #ifndef XAXIDMA_H_   /* prevent circular inclusions */
 #define XAXIDMA_H_
-// #define XAXIDMA_HW_H_
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /***************************** Include Files *********************************/
 #include "xaxidma_bdring.h"
-// #include "my_emul.h"
 #ifdef __MICROBLAZE__
 #include "xenv.h"
 #else
-#include <string.h>
+// #include <string.h>
+#include "my_emul.h"
 #include "xil_cache.h"
 #endif
-
 
 /************************** Constant Definitions *****************************/
 

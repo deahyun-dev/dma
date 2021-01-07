@@ -7,7 +7,7 @@ ccflags-y += -I/home/daehyun/7_zed_dma_driver_1028/Xlinx_includes/include/ -MMD
 
 SRC := $(shell pwd)
 
-BLT = daehyun_v_10
+BLT = daehyun_v_d_12
 
 all:
 	$(MAKE) -C $(KERNEL_SRC) M=$(SRC)

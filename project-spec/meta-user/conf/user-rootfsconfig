@@ -11,3 +11,7 @@ CONFIG_libxil
 
 CONFIG_0-dma-test
 CONFIG_axidma
+
+CONFIG_1-dma-vitis-mmap
+CONFIG_dma-vitis-l
+CONFIG_2-dma-vitis-kernel

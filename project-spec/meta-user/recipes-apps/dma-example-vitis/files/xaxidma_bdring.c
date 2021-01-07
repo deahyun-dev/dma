@@ -49,8 +49,13 @@
 ******************************************************************************/
 
 /***************************** Include Files *********************************/
-
+// #ifndef XAXIDMA_H
+// #define XAXIDMA_H
+// #endif
+#define DMA_H
 #include "xaxidma_bdring.h"
+#include "xaxidma_hw.h"
+
 // #define XAXIDMA_HW_H_
 /************************** Constant Definitions *****************************/
 /* Use 100 milliseconds for 100 MHz
@@ -332,7 +337,7 @@ u32 XAxiDma_BdRingCreate(XAxiDma_BdRing *RingPtr, UINTPTR PhysAddr,
 
 		return XST_INVALID_PARAM;
 	}
-
+	printf("Create check 0\n");
 	/* In case there is a failure prior to creating list, make sure the
 	 * following attributes are 0 to prevent calls to other SG functions
 	 * from doing anything
@@ -353,7 +358,7 @@ u32 XAxiDma_BdRingCreate(XAxiDma_BdRing *RingPtr, UINTPTR PhysAddr,
 
 		return XST_INVALID_PARAM;
 	}
-
+	printf("Create check 1\n");
 	/* Make sure Alignment is a power of 2 */
 	if ((Alignment - 1) & Alignment) {
 
@@ -372,7 +377,7 @@ u32 XAxiDma_BdRingCreate(XAxiDma_BdRing *RingPtr, UINTPTR PhysAddr,
 
 		return XST_INVALID_PARAM;
 	}
-
+	printf("Create check 2\n");
 	/* Compute how many bytes will be between the start of adjacent BDs */
 	RingPtr->Separation =
 		(sizeof(XAxiDma_Bd) + (Alignment - 1)) & ~(Alignment - 1);
@@ -387,20 +392,24 @@ u32 XAxiDma_BdRingCreate(XAxiDma_BdRing *RingPtr, UINTPTR PhysAddr,
 
 		return XST_DMA_SG_LIST_ERROR;
 	}
-
+	printf("Create check 3\n");
 	/* Initial ring setup:
 	 *  - Clear the entire space
 	 *  - Setup each BD's next pointer with the physical address of the
 	 *    next BD
 	 *  - Put hardware information in each BD
 	 */
-	memset((void *) VirtAddr, 0, (RingPtr->Separation * BdCount));
-
+	
+	// memset((void *) VirtAddr, 0, (RingPtr->Separation * BdCount));
+	// memset((void *) VirtAddr, 0, DMA_BUF_SIZE); //* revised by daehyun
+	
 	BdVirtAddr = VirtAddr;
 	BdPhysAddr = PhysAddr + RingPtr->Separation;
 	for (i = 1; i < BdCount; i++) {
+		
 		XAxiDma_BdWrite(BdVirtAddr, XAXIDMA_BD_NDESC_OFFSET,
 				(BdPhysAddr & XAXIDMA_DESC_LSB_MASK));
+		
 		XAxiDma_BdWrite(BdVirtAddr, XAXIDMA_BD_NDESC_MSB_OFFSET,
 				UPPER_32_BITS(BdPhysAddr));
 
@@ -413,11 +422,11 @@ u32 XAxiDma_BdRingCreate(XAxiDma_BdRing *RingPtr, UINTPTR PhysAddr,
 		    (((u32)(RingPtr->HasDRE)) << XAXIDMA_BD_HAS_DRE_SHIFT) |
 		    RingPtr->DataWidth);
 
-		XAXIDMA_CACHE_FLUSH(BdVirtAddr);
+		// XAXIDMA_CACHE_FLUSH(BdVirtAddr);
 		BdVirtAddr += RingPtr->Separation;
 		BdPhysAddr += RingPtr->Separation;
 	}
-
+	printf("Create check 4\n");
 	/* At the end of the ring, link the last BD back to the top */
 	XAxiDma_BdWrite(BdVirtAddr, XAXIDMA_BD_NDESC_OFFSET,
 			(PhysAddr & XAXIDMA_DESC_LSB_MASK));
@@ -432,6 +441,8 @@ u32 XAxiDma_BdRingCreate(XAxiDma_BdRing *RingPtr, UINTPTR PhysAddr,
 	XAxiDma_BdWrite(BdVirtAddr, XAXIDMA_BD_HAS_DRE_OFFSET,
 	    (((u32)(RingPtr->HasDRE)) << XAXIDMA_BD_HAS_DRE_SHIFT) |
 	    RingPtr->DataWidth);
+
+	printf("Create check 5\n");
 
 	/* Setup and initialize pointers and counters */
 	RingPtr->RunState = AXIDMA_CHANNEL_HALTED;
@@ -448,8 +459,9 @@ u32 XAxiDma_BdRingCreate(XAxiDma_BdRing *RingPtr, UINTPTR PhysAddr,
 	RingPtr->HwTail = (XAxiDma_Bd *) VirtAddr;
 	RingPtr->PostHead = (XAxiDma_Bd *) VirtAddr;
 	RingPtr->BdaRestart = (XAxiDma_Bd *) VirtAddr;
+	printf("Create check 6\n");
 	RingPtr->CyclicBd = (XAxiDma_Bd *) malloc(sizeof(XAxiDma_Bd));
-
+	printf("Create check 7\n");
 	return XST_SUCCESS;
 }
 
@@ -513,12 +525,16 @@ int XAxiDma_BdRingClone(XAxiDma_BdRing * RingPtr, XAxiDma_Bd * SrcBdPtr)
 	/* Make a copy of the template then modify it by clearing
 	 * the complete bit in status/control field
 	 */
+
 	memcpy(&TmpBd, SrcBdPtr, sizeof(XAxiDma_Bd));
+	printf("clone check 0\n");
+	printf("clone &TmpBd %08x\n", &TmpBd);
 
 	Save = XAxiDma_BdRead(&TmpBd, XAXIDMA_BD_STS_OFFSET);
 	Save &= ~XAXIDMA_BD_STS_COMPLETE_MASK;
+	printf("clone check 1\n");
 	XAxiDma_BdWrite(&TmpBd, XAXIDMA_BD_STS_OFFSET, Save);
-
+	printf("clone check 2\n");
 	for (i = 0, CurBd = RingPtr->FirstBdAddr;
 	     i < RingPtr->AllCnt; i++, CurBd += RingPtr->Separation) {
 
@@ -526,7 +542,7 @@ int XAxiDma_BdRingClone(XAxiDma_BdRing * RingPtr, XAxiDma_Bd * SrcBdPtr)
 		    (void *)((UINTPTR)(&TmpBd) + XAXIDMA_BD_START_CLEAR),
 		    XAXIDMA_BD_BYTES_TO_CLEAR);
 
-		XAXIDMA_CACHE_FLUSH(CurBd);
+		// XAXIDMA_CACHE_FLUSH(CurBd);
 	}
 
 	return XST_SUCCESS;
@@ -647,7 +663,7 @@ int XAxiDma_StartBdRingHw(XAxiDma_BdRing * RingPtr)
 int XAxiDma_BdRingStart(XAxiDma_BdRing * RingPtr)
 {
 	int Status;
-
+	printf("check 6\n");
 	Status = XAxiDma_UpdateBdRingCDesc(RingPtr);
 	if (Status != XST_SUCCESS) {
 		 xdbg_printf(XDBG_DEBUG_ERROR, "BdRingStart: "
@@ -655,13 +671,14 @@ int XAxiDma_BdRingStart(XAxiDma_BdRing * RingPtr)
 		return Status;
 	}
 
+	printf("check 7\n");
 	Status = XAxiDma_StartBdRingHw(RingPtr);
 	if (Status != XST_SUCCESS) {
 		 xdbg_printf(XDBG_DEBUG_ERROR, "BdRingStart: "
 			"Starting Hardware Failed\n\r");
 		return Status;
 	}
-
+	printf("check 8\n");
 	return XST_SUCCESS;
 }
 

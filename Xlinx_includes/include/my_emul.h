@@ -139,13 +139,16 @@ typedef u32* UINTPTR;
 
 #endif
 
-#ifdef XAXIDMA_HW_H_
+#ifdef DMA_H
 
 //* magic number for xil_inout at API
-#define DMA_IOCTL_NUMBER 'D'
+#define DMA_IOCTL_NUMBER 'M'
 
 #define DMA_In32        _IOR(DMA_IOCTL_NUMBER, 0, DMA_param)
 #define DMA_Out32       _IOW(DMA_IOCTL_NUMBER, 1, DMA_param)
+#define DMA_BD_READ     _IOW(DMA_IOCTL_NUMBER, 2, DMA_param)
+#define DMA_BD_WRITE    _IOW(DMA_IOCTL_NUMBER, 3, DMA_param)
+#define DMA_ALLOC_BUF   _IOR(DMA_IOCTL_NUMBER, 99, DMA_param)
 #define DMA_BASE_ADDR   _IOW(DMA_IOCTL_NUMBER, 100, UINTPTR)
 
 #endif
@@ -284,15 +287,17 @@ typedef u32* UINTPTR;
   
 #endif
 
-#ifdef XAXIDMA_HW_H_
+#ifdef DMA_H
 
 //* magic number for xil_inout at API
-#define DMA_IOCTL_NUMBER 'D'
+#define DMA_IOCTL_NUMBER 'M'
 
 #define DMA_In32        _IOR(DMA_IOCTL_NUMBER, 0, DMA_param)
 #define DMA_Out32       _IOW(DMA_IOCTL_NUMBER, 1, DMA_param)
+#define DMA_BD_READ     _IOW(DMA_IOCTL_NUMBER, 2, DMA_param)
+#define DMA_BD_WRITE    _IOW(DMA_IOCTL_NUMBER, 3, DMA_param)
 #define DMA_BASE_ADDR   _IOW(DMA_IOCTL_NUMBER, 100, UINTPTR)
-
+#define DMA_ALLOC_BUF   _IOR(DMA_IOCTL_NUMBER, 99, DMA_param)
 #define Xil_In32(fd, param)     ioctl(fd, DMA_In32, param)
 #define Xil_Out32(fd, param)    ioctl(fd, DMA_Out32, param)
 
@@ -301,7 +306,7 @@ typedef u32* UINTPTR;
 
 #endif
 
-
+#define DMA_BUF_SIZE 0x1000 * 2
 
 
 // #define RxBF_IOCTL_NUMBER 'R'

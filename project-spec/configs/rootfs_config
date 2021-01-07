@@ -4002,17 +4002,20 @@ CONFIG_imagefeature-debug-tweaks=y
 # apps 
 #
 # CONFIG_0-dma-test is not set
-CONFIG_dma-example-vitis=y
+# CONFIG_1-dma-vitis-mmap is not set
+CONFIG_2-dma-vitis-kernel=y
+# CONFIG_dma-example-vitis is not set
 # CONFIG_dma-test-0 is not set
 CONFIG_gpio-demo=y
 # CONFIG_libapp is not set
-# CONFIG_peekpoke is not set
+CONFIG_peekpoke=y
 
 #
 # modules 
 #
 # CONFIG_axidma is not set
-CONFIG_dma-l=y
+# CONFIG_dma-l is not set
+CONFIG_dma-vitis-l=y
 
 #
 # user packages 

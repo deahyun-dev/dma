@@ -57,10 +57,13 @@
  * ***************************************************************************
  */
 /***************************** Include Files *********************************/
+
 #include <stdio.h>
 #include "xaxidma.h"
+#include "xaxidma_hw.h"
 #include "xparameters.h"
 #include "xdebug.h"
+#include "my_emul.h"
 
 #ifdef __aarch64__
 #include "xil_mmu.h"
@@ -173,12 +176,14 @@ int main(void)
 
 #endif
 
-	printf("\r\n--- build check 1 --- \r\n");
+	printf("\r\n--- build check 7 --- \r\n");
 
 #ifdef __aarch64__
 	Xil_SetTlbAttributes(TX_BD_SPACE_BASE, MARK_UNCACHEABLE);
 	Xil_SetTlbAttributes(RX_BD_SPACE_BASE, MARK_UNCACHEABLE);
 #endif
+	UINTPTR addr;
+	u32 tmp;
 
 	Config = XAxiDma_LookupConfig(DMA_DEV_ID);
 	if (!Config) {
@@ -188,36 +193,71 @@ int main(void)
 	}
 
     printf("XAxiDma_LookupConfig Success\r\n");
-    
-    int DMA_fd = open(DMA_NODE, O_RDWR);
-  	ioctl(DMA_fd, DMA_BASE_ADDR, &AxiDma); //* Set baseaddress
-  	close(DMA_fd);
 
-    printf("get vitual address Success %08x\r\n", AxiDma.RegBase);
-	/* Initialize DMA engine */
 	Status = XAxiDma_CfgInitialize(&AxiDma, Config);
 	if (Status != XST_SUCCESS) {
 		printf("Initialization failed %d\r\n", Status);
 		return XST_FAILURE;
 	}
 
-    // printf("XAxiDma_CfgInitialize Success\r\n");
+    printf("XAxiDma_CfgInitialize Success\r\n");
 
-	// if(!XAxiDma_HasSg(&AxiDma)) {
-	// 	printf("Device configured as Simple mode \r\n");
 
-	// 	return XST_FAILURE;
-	// }
 
-	// Status = TxSetup(&AxiDma);
-	// if (Status != XST_SUCCESS) {
-	// 	return XST_FAILURE;
-	// }
+    printf("get vitual address Success %08x\r\n", AxiDma.RegBase);
+	/* Initialize DMA engine */
+
+	int DMA_fd = open(DMA_NODE, O_RDWR);
+  	ioctl(DMA_fd, DMA_ALLOC_BUF, &AxiDma); //* Set DMA BUF
+  	close(DMA_fd);
+
+	addr = AxiDma.RegBase + 0x100;
+	printf("read addr %08x\r\n", addr);
+	tmp = XAxiDma_ReadReg(addr, 0);
+    printf("read value %08x\r\n", tmp);
+
+	XAxiDma_WriteReg(addr, 0, 0x03F);
+    tmp = XAxiDma_ReadReg(addr, 0);
+    printf("0x3F write after %08x\r\n", tmp);
+
+    XAxiDma_WriteReg(addr, 0, 0xFFFFFFFF);
+    tmp = XAxiDma_ReadReg(addr, 0);
+    printf("all F write after %08x\r\n", tmp);
+
+	XAxiDma_WriteReg(addr, 0, 0x00000000);
+    tmp = XAxiDma_ReadReg(addr, 0);
+    printf("all 0 write after %08x\r\n", tmp);
+
+
+	for(int i=0; i<18; i++) {
+    	addr = AxiDma.RegBase + 0x4 * i;
+    	printf("read addr %08x\r\n", addr);
+		tmp = XAxiDma_ReadReg(addr, 0);
+    	printf("read value %08x\r\n", tmp);
+	}
+
+
+	if(!XAxiDma_HasSg(&AxiDma)) {
+		printf("Device configured as Simple mode \r\n");
+
+		return XST_FAILURE;
+	}
+
+	printf("XAxiDma_HasSg check Success\r\n");
+
+	Status = TxSetup(&AxiDma);
+	if (Status != XST_SUCCESS) {
+		return XST_FAILURE;
+	}
+
+	printf("TxSetup Success\r\n");
 
 	// Status = RxSetup(&AxiDma);
 	// if (Status != XST_SUCCESS) {
 	// 	return XST_FAILURE;
 	// }
+
+	// printf("RxSetup Success\r\n");
 
 	// /* Send a packet */
 	// Status = SendPacket(&AxiDma);
@@ -423,21 +463,43 @@ static int TxSetup(XAxiDma * AxiDmaInstPtr)
 	u32 BdCount;
 
 	TxRingPtr = XAxiDma_GetTxRing(&AxiDma);
-
+	printf("check 0\n");
 	/* Disable all TX interrupts before TxBD space setup */
 
 	XAxiDma_BdRingIntDisable(TxRingPtr, XAXIDMA_IRQ_ALL_MASK);
-
+	printf("check 0\n");
 	/* Set TX delay and coalesce */
 	XAxiDma_BdRingSetCoalesce(TxRingPtr, Coalesce, Delay);
-
+	printf("check 1\n");
 	/* Setup TxBD space  */
 	BdCount = XAxiDma_BdRingCntCalc(XAXIDMA_BD_MINIMUM_ALIGNMENT,
 				TX_BD_SPACE_HIGH - TX_BD_SPACE_BASE + 1);
+	printf("check 2\n");
 
-	Status = XAxiDma_BdRingCreate(TxRingPtr, TX_BD_SPACE_BASE,
-				TX_BD_SPACE_BASE,
+	//***********************************************************************************************************************/
+
+	int fd = open(DMA_NODE, O_RDWR);
+	ioctl(fd, DMA_ALLOC_BUF, &param);
+	close(fd);
+
+	UINTPTR TX_BD_VIRT_BASE = param.addr;
+	UINTPTR TX_BD_PHY_BASE = (UINTPTR)param.val;
+	// TX_BD_SPACE_BASE = param.val;
+	printf("mmap phy addr %08x\n", TX_BD_PHY_BASE);
+	param.addr = 0;
+	param.val = 0;
+	
+	//***********************************************************************************************************************/
+
+
+	printf("mmap virt addr %08x\n", TX_BD_VIRT_BASE);
+	
+	printf("check 3\n");
+
+	Status = XAxiDma_BdRingCreate(TxRingPtr, TX_BD_PHY_BASE,
+				TX_BD_VIRT_BASE,
 				XAXIDMA_BD_MINIMUM_ALIGNMENT, BdCount);
+	
 	if (Status != XST_SUCCESS) {
 		printf("failed create BD ring in txsetup\r\n");
 
@@ -448,14 +510,14 @@ static int TxSetup(XAxiDma * AxiDmaInstPtr)
 	 * We create an all-zero BD as the template.
 	 */
 	XAxiDma_BdClear(&BdTemplate);
+	printf("check 4\n");
+	// Status = XAxiDma_BdRingClone(TxRingPtr, &BdTemplate);
+	// if (Status != XST_SUCCESS) {
+	// 	printf("failed bdring clone in txsetup %d\r\n", Status);
 
-	Status = XAxiDma_BdRingClone(TxRingPtr, &BdTemplate);
-	if (Status != XST_SUCCESS) {
-		printf("failed bdring clone in txsetup %d\r\n", Status);
-
-		return XST_FAILURE;
-	}
-
+	// 	return XST_FAILURE;
+	// }
+	printf("check 5\n");
 	/* Start the TX channel */
 	Status = XAxiDma_BdRingStart(TxRingPtr);
 	if (Status != XST_SUCCESS) {
@@ -463,7 +525,7 @@ static int TxSetup(XAxiDma * AxiDmaInstPtr)
 
 		return XST_FAILURE;
 	}
-
+	printf("check 6\n");
 	return XST_SUCCESS;
 }
 

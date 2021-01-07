@@ -35,6 +35,7 @@
 #ifndef XAXIDMA_HW_H_    /* prevent circular inclusions */
 #define XAXIDMA_HW_H_
 
+#define DMA_H
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -42,6 +43,7 @@ extern "C" {
 #include "xil_types.h"
 #include "xil_io.h"
 #include "my_emul.h"
+#include <sys/mman.h>
 
 //************************** edited by daehyun *****************************/
 typedef struct{
@@ -52,13 +54,13 @@ typedef struct{
 }__attribute__((packed)) DMA_param;
 
 DMA_param param;
-void DMA_Xil_Out32(UINTPTR addr, u32 val);
-u32 DMA_Xil_In32(UINTPTR addr);
+void XAxiDma_Out32(UINTPTR addr, u32 val);
+u32 XAxiDma_In32(UINTPTR addr);
 
 /***************** Macros (Inline Functions) Definitions *********************/
 
-#define XAxiDma_In32	DMA_Xil_In32
-#define XAxiDma_Out32	DMA_Xil_Out32
+// #define XAxiDma_In32	DMA_Xil_In32
+// #define XAxiDma_Out32	DMA_Xil_Out32
 
 //**************************************************************************/
 

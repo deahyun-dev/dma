@@ -35,9 +35,34 @@
  * </pre>
  *
  *****************************************************************************/
-
+// #ifndef XAXIDMA_H
+// #define XAXIDMA_H
+// #endif
+#define DMA_H
 #include "xaxidma_bd.h"
-// #define XAXIDMA_HW_H_
+#include "xaxidma_hw.h"
+
+
+void XAxiDma_BdWrite(UINTPTR BaseAddress, int Offset, u32 Data){
+	int DMA_fd = open(DMA_NODE, O_RDWR);
+  	param.addr = BaseAddress + Offset;
+  	param.val = Data;
+  	ioctl(DMA_fd, DMA_BD_WRITE, &param);
+  	close(DMA_fd);
+	
+	return 0;
+}
+
+// u32 XAxiDma_BdRead(UINTPTR BaseAddress, int Offset){
+// 	int DMA_fd = open(DMA_NODE, O_RDWR);
+  	
+// 	param.addr = BaseAddress + Offset;
+//   	ioctl(DMA_fd, DMA_BD_READ, &param);
+//   	close(DMA_fd);
+
+// 	return (u32)param.val;
+// }
+
 /************************** Function Prototypes ******************************/
 
 /*****************************************************************************/

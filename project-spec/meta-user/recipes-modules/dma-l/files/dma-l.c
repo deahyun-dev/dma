@@ -17,7 +17,7 @@
 
 */
 
-#define XAXIDMA_HW_H_
+#define DMA_H
 
 #include <linux/kernel.h>
 #include <linux/init.h>
@@ -31,6 +31,8 @@
 #include <linux/of_platform.h>
 
 #include <linux/dma-mapping.h>
+#include <asm/page.h>
+// #include <kernel/dma/direct.h>
 
 /********************************************************************************************************/
 
@@ -55,19 +57,18 @@ MODULE_DESCRIPTION
 /********************************************************************************************************/
 
 void __iomem* base_addr; //virtual address
-// void __iomem* Delay_addr;
-// void __iomem* Ctrl_addr;
-// void __iomem* Spi_addr;
-// void __iomem* ChData_addr;
+UINTPTR dma_addr;
+UINTPTR dma_virt_addr;
+dma_addr_t dma_phy_addr;
 
 typedef struct{
     //* parameters
     u32 addr;
     u32 val;
-
+    int offset;
 }__attribute__((packed)) DMA_param;
 
-DMA_param param; //* paramters & file discripter
+
 
 typedef u32 XAxiDma_Bd[16U];
 
@@ -120,6 +121,7 @@ typedef struct XAxiDma {
 	int AddrWidth;		  /**< Address Width */
 } XAxiDma;
 
+DMA_param param; //* paramters & file discripter
 XAxiDma Inst;
 XAxiDma *InstPtr = &Inst;
 // emulation
@@ -185,38 +187,16 @@ long dma_l_unlocked_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 	
 
     switch(cmd){
-        // case ADC_In8:
-        //     ret = copy_from_user((void*)&param, (void*)arg, sizeof(param)); 
-		// 	param.val = Xil_In8(param.addr);
-		// 	ret = copy_to_user((void*)arg, (void*)&param, sizeof(param));
-        //     break;
-        
-		// case ADC_Out8:
-        //     ret = copy_from_user((void*)&param, (void*)arg, sizeof(param));
-		// 	Xil_Out8(param.addr, param.val); 
-        //     break;
-        
-		// case ADC_In16:
-        //     ret = copy_from_user((void*)&param, (void*)arg, sizeof(param));
-		// 	param.val = Xil_In16(param.addr);
-        //     // printk("kernel param.addr %08x\n", param.addr);
-        //     // printk("kernel param.val  %08x\n", param.val);
-		// 	ret = copy_to_user((void*)arg, (void*)&param, sizeof(param)); 
-        //     break;	
-        
-		// case ADC_Out16:
-        //     ret = copy_from_user((void*)&param, (void*)arg, sizeof(param));
-		// 	Xil_Out16(param.addr, param.val); 
-        //     break;	
-        
 		case DMA_In32:
-            ret = copy_from_user((void*)&param, (void*)arg, sizeof(param)); 
+            // printk("ioread\n");
+            ret = copy_from_user((void*)&param, (void*)arg, sizeof(param));
 			param.val = Xil_In32(param.addr);
 			ret = copy_to_user((void*)arg, (void*)&param, sizeof(param));
             break;	
         
 		case DMA_Out32:
-            ret = copy_from_user((void*)&param, (void*)arg, sizeof(param)); 
+            // printk("iowrite\n");
+            ret = copy_from_user((void*)&param, (void*)arg, sizeof(param));
 			Xil_Out32(param.addr, param.val);
             break;
 
@@ -226,6 +206,27 @@ long dma_l_unlocked_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
             InstPtr->RegBase = base_addr;
 			
             ret = copy_to_user((void*)arg, (void*)InstPtr, sizeof(param));
+            break;
+
+        case DMA_ALLOC_BUF:
+            ret = copy_from_user((void*)&param, (void*)arg, sizeof(param));
+			param.addr = dma_virt_addr;
+            param.val = (u32)dma_phy_addr;
+            ret = copy_to_user((void*)arg, (void*)&param, sizeof(param));
+
+            break;
+
+        case DMA_BD_WRITE:
+            ret = copy_from_user((void*)&param, (void*)arg, sizeof(param));
+            dma_addr = param.addr;
+			*(dma_addr) = (u32)param.val; 
+            break;
+
+        case DMA_BD_READ:
+            ret = copy_from_user((void*)&param, (void*)arg, sizeof(param));
+            dma_addr = param.addr;
+			param.val = (u32)(*dma_addr);
+            ret = copy_to_user((void*)arg, (void*)&param, sizeof(param));
             break;
 
         default:
@@ -295,7 +296,7 @@ static int dma_l_probe(struct platform_device *pdev)
     lp->mem_end = r_mem->end;
 
     if (!request_mem_region(lp->mem_start,
-                (lp->mem_end - lp->mem_start + 1),
+                lp->mem_end - lp->mem_start + 1,
                 DRIVER_NAME)) {
         dev_err(dev, "Couldn't lock memory region at %p\n",
             (void *)lp->mem_start);
@@ -347,6 +348,15 @@ static int dma_l_probe(struct platform_device *pdev)
         (unsigned int __force)lp->mem_start,
         (unsigned int __force)lp->base_addr,
         lp->irq);
+
+        dma_virt_addr = dma_alloc_coherent(dev, DMA_BUF_SIZE, &dma_phy_addr, GFP_KERNEL | __GFP_DMA);
+        printk("virt addr %08x", dma_virt_addr);
+        printk("phy addr %08x", dma_phy_addr);    
+        
+        // *dma_virt_addr = 1;
+
+        // printk("virt addr write test %08x", *dma_virt_addr);
+
     return 0;
 error3:
     free_irq(lp->irq, lp);
